@@ -8,7 +8,7 @@ TOTAL=10026
 GRADE=0
 for i in {1..100}; do
     echo -n "."
-    OUTPUT=$(timeout 2s ./a.out < "./in/file$i" | head -n 1)
+    OUTPUT=$(gtimeout 2s ./a.out < "./in/file$i" | head -n 1)
     EXPECT=$(cat "./out/file$i" | head -n 1)
     CURRENT=$(date +%s)
     if (( CURRENT - START > 60 )); then
@@ -16,16 +16,23 @@ for i in {1..100}; do
 	    break
     fi
     if [[ "$EXPECT" =~ "CORRETO" ]]; then
-	if [[ "$OUTPUT" =~ "CORRETO" ]]; then
-	    GRADE=$((GRADE+80))
-	fi
-	if [[ "$OUTPUT" == "$EXPECT" ]]; then
-	    GRADE=$((GRADE+48))
-	fi
+        if [[ "$OUTPUT" =~ "CORRETO" ]]; then
+            GRADE=$((GRADE+80))
+        fi
+        if [[ "$OUTPUT" == "$EXPECT" ]]; then
+            GRADE=$((GRADE+48))
+        fi
     else
-	if [[ "$OUTPUT" == "ERRO" ]]; then
-	    GRADE=$((GRADE+80))
-	fi
+        if [[ "$OUTPUT" == "ERRO" ]]; then
+            GRADE=$((GRADE+80))
+        fi
+    fi
+    if [[ "$EXPECT" =~ "CORRETO" ]] && \
+       [[ "$OUTPUT" =~ "CORRETO" ]] || \
+       [[ "$OUTPUT" == "$EXPECT" ]]; then
+        echo " OK $i : r $OUTPUT | g $EXPECT"
+    else
+        echo " Fail $i : r $OUTPUT | g $EXPECT         <<------ $i"
     fi
 done
 
