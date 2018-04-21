@@ -27,9 +27,7 @@ for i in {1..100}; do
             GRADE=$((GRADE+80))
         fi
     fi
-    if [[ "$EXPECT" =~ "CORRETO" ]] && \
-       [[ "$OUTPUT" =~ "CORRETO" ]] || \
-       [[ "$OUTPUT" == "$EXPECT" ]]; then
+    if [[ "$OUTPUT" == "$EXPECT" ]]; then
         echo " OK $i : r $OUTPUT | g $EXPECT"
     else
         echo " Fail $i : r $OUTPUT | g $EXPECT         <<------ $i"

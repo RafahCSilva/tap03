@@ -1,7 +1,7 @@
 /**
  * @author Rafael Cardoso da Silva 21048012
  * Tecnicas Avancadas de Programacao – 2018.Q1
- * Projeto 2: Domino
+ * Projeto 3: Reconhecendo Gramaticas
  *
  * Compile com C++ 17:
  *   g++ rafaelcardoso_tap03.cpp -o rafaelcardoso_tap03.exe -std=c++17
@@ -14,7 +14,6 @@
 #include <cstdio>
 #include <string>
 
-//#define V true
 #define V false
 
 namespace T {
@@ -54,7 +53,6 @@ namespace T {
 }
 
 struct Token {
-//    Token( int t, std::string srt ) : t( t ), srt( std::move( srt )) {}
     int t = T::TOKEN_INVALIDO;
     char srt = '\0';
     unsigned long id = 0;
@@ -76,18 +74,20 @@ void Analisador_Lexico() {
         i = 0;
         while ( i < n ) {
             c = linha[ i ];
+            // ignora "" ou \t ou \r\n
+            if ( c == ' ' || c == '\t' || c == '\r' || c == '\n' ) {
+                i++;
+                continue;
+            }
             if ( V ) {
                 if ( c == '-' )
                     fprintf( stderr, "  '%s'\n", linha.substr( i, 3 ).c_str() );
                 else
-                    fprintf( stderr, "  '%c'\n", c );
+                    fprintf( stderr, "  '%c' = %d\n", c, c );
             }
 
-            // "" ou \t
-            if ( c == ' ' || c == '\t' ) {
-            }
-                // <
-            else if ( c == '<' ) {
+            // <
+            if ( c == '<' ) {
                 lex.push_back( ( Token ) { T::SINAL_MENOR, '<', lex.size() } );
             }
                 // >
@@ -129,35 +129,17 @@ void Imprimir_Lexico() {
 unsigned long LEX_N = 0;
 
 bool lex_is( T::t_enum t ) {
-    // TODO: confere se o LEX_N nao estoura
     if ( LEX_N >= lex.size() ) {
         throw std::runtime_error( "Estouro do LEX" );
     }
     if ( lex.at( LEX_N ).t == t ) {
         if ( V )
-            fprintf( stderr, "  %lu : %s\n", LEX_N, T::printT( t ).c_str() );
+            fprintf( stderr, "  %lu : %s '%c'\n", LEX_N, T::printT( t ).c_str(), lex.at( LEX_N ).srt );
         LEX_N++;
         return true;
     }
-    if ( V )
-        fprintf( stderr, "    nao terminal %lu : %s\n", LEX_N, T::printT( t ).c_str() );
     return false;
 }
-
-
-bool g_gramatica();
-
-bool g_regra();
-
-bool g_sentenca1();
-
-bool g_sentenca2();
-
-bool g_elemento();
-
-bool g_variavel();
-
-bool g_id();
 
 /*
  * GRAMATICA:
@@ -175,10 +157,22 @@ bool g_id();
  *   <id> --> TERMINAL
  *
  */
+bool g_gramatica();
 
+bool g_regra();
+
+bool g_sentenca1();
+
+bool g_sentenca2();
+
+bool g_elemento();
+
+bool g_variavel();
+
+bool g_id();
 
 bool g_gramatica() {
-    if ( g_regra() ) {
+    if ( g_regra() ) { // 1
         return g_gramatica();
     } else if ( lex_is( T::EoF ) ) {
         return true;
@@ -187,12 +181,10 @@ bool g_gramatica() {
 }
 
 bool g_regra() {
-
     return g_sentenca1() &&
            ( lex_is( T::FLECHA ) ) &&
            g_sentenca2() &&
            ( lex_is( T::EoL ) );
-
 }
 
 bool g_sentenca1() {
@@ -201,25 +193,22 @@ bool g_sentenca1() {
 }
 
 bool g_sentenca2() {
-    while ( g_elemento() ) {
-
-    }
+    while ( g_elemento() );
 
     return true;
 }
 
 bool g_elemento() {
-    if ( lex_is( T::TERMINAL ) ) {
+    if ( lex_is( T::TERMINAL ) )
         return true;
-    }
 
     return g_variavel();
 }
 
 bool g_variavel() {
-    if ( lex_is( T::LETRA_MAIUSCULA ) ) {
+    if ( lex_is( T::LETRA_MAIUSCULA ) )
         return true;
-    }
+
     return lex_is( T::SINAL_MENOR ) &&
            g_id() &&
            lex_is( T::SINAL_MAIOR );
@@ -227,11 +216,129 @@ bool g_variavel() {
 
 bool g_id() {
     if ( lex_is( T::TERMINAL ) ) {
-        g_id();
+        while ( lex_is( T::TERMINAL ) );
         return true;
     }
 
     return false;
+}
+
+
+/*
+ * Classificador de Gramaticas:
+ *   tipo 3 - gramaticas regulares
+ *   tipo 2 - gramaticas livres de contexto
+ *   tipo 1 - gramaticas sensıveis ao contexto
+ *   tipo 0 - gramaticas irrestritas
+ */
+int classificar_gramatica() {
+    if ( V )
+        fprintf( stderr, "\nIniciando Classificacao da Gramatica:\n" );
+
+    // flags
+    bool tem_VAR_esq = false;
+    bool tem_TERM_esq = false;
+    bool tem_VAR_dir = false;
+    bool tem_TERM_dir = false;
+    bool vazio_dir = false;
+    bool reg_dir = true;
+    bool lado = false; // false = esq | true = dir
+    LEX_N = 0;
+    unsigned long size = lex.size();
+
+    int cont_dir = 0, cont_TERM = 0, cont_VAR = 0;
+    while ( LEX_N < size ) {
+
+        // Acabou as regras, entao analisa as flags
+        if ( lex_is( T::EoF ) ) {
+
+            // tipo 3 - gramaticas regulares
+            if ( tem_VAR_esq &&
+                 !tem_TERM_esq &&
+                 reg_dir ) {
+                return 3;
+            }
+
+            // tipo 2 - gramaticas livres de contexto
+            if ( tem_VAR_esq &&
+                 !tem_TERM_esq ) {
+                return 2;
+            }
+
+            // tipo 1 - gramaticas sensıveis ao contexto
+            if ( tem_VAR_esq &&
+                 tem_TERM_esq &&
+                 ( tem_VAR_dir || tem_TERM_dir ) &&
+                 !vazio_dir ) {
+                return 1;
+            }
+
+            // tipo 0 - gramaticas irrestritas
+            return 0;
+        }
+
+        if ( !lado ) {
+            // lado ESQ da Regra
+            if ( lex_is( T::SINAL_MENOR ) ) {
+                while ( lex_is( T::TERMINAL ) );
+                if ( lex_is( T::SINAL_MAIOR ) ) {
+                    tem_VAR_esq = true;
+                    continue;
+                }
+            } else if ( lex_is( T::TERMINAL ) ) {
+                // eh TERM na esq
+                tem_TERM_esq = true;
+            } else if ( lex_is( T::LETRA_MAIUSCULA ) ) {
+                // eh VAR na esq
+                tem_VAR_esq = true;
+            } else if ( lex_is( T::FLECHA ) ) {
+                // Terminou a primeira parte da regra, entao troca de lado
+                if ( V ) fprintf( stderr, "--> \n" );
+                lado = true;
+
+                continue;
+            }
+        } else {
+            // lado DIR da Regra
+            if ( lex_is( T::SINAL_MENOR ) ) { // se "< id >"
+                while ( lex_is( T::TERMINAL ) );
+                if ( lex_is( T::SINAL_MAIOR ) ) {
+                    tem_VAR_dir = true;
+                    cont_VAR++;
+                    continue;
+                }
+            } else if ( lex_is( T::TERMINAL ) ) {
+                // eh TERM a dir
+                tem_TERM_dir = true;
+                cont_dir++;
+                cont_TERM++;
+            } else if ( lex_is( T::LETRA_MAIUSCULA ) ) {
+                // eh VAR a dir
+                tem_VAR_dir = true;
+                cont_dir++;
+                cont_VAR++;
+            } else if ( lex_is( T::EoL ) ) {
+                // terminou a linha, troca o lado
+                if ( V ) fprintf( stderr, "EoL \n\n" );
+                lado = false;
+
+                // E analisa se eh regular na direita, isto eh: aB | Ba | eps
+                if ( !( ( cont_TERM == 1 && cont_VAR == 1 ) || cont_dir == 0 ) )
+                    reg_dir = false;
+                cont_TERM = 0;
+                cont_VAR = 0;
+
+                // se foi eps, ativa a flag
+                if ( cont_dir == 0 )
+                    vazio_dir = true;
+                cont_dir = 0;
+
+                continue;
+            }
+        }
+    }
+
+    return 0;
 }
 
 void Analisador_Sintatico() {
@@ -239,7 +346,7 @@ void Analisador_Sintatico() {
         fprintf( stderr, "\nIniciando Analisador Sintático:\n" );
 
     if ( g_gramatica() ) {
-        fprintf( stdout, "CORRETO 0\n" );
+        fprintf( stdout, "CORRETO %d\n", classificar_gramatica() );
     } else {
         fprintf( stdout, "ERRO\n" );
     }

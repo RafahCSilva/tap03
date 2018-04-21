@@ -15,6 +15,4 @@
 #./cmake-build-debug/tap03 < ./grammar/in/file98
 
 ## Run GRADE
-cp ./cmake-build-debug/tap03 ./grammar/a.out
-cd ./grammar
-./grade.bash
+cp ./cmake-build-debug/tap03 ./grammar/a.out && cd ./grammar && ./grade.bash
